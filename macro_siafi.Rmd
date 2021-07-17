@@ -1,0 +1,107 @@
+---
+title: "macro_siafi"
+output: html_document
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+options(scipen=999)
+options(digits=2)
+# options (LC_NUMERIC="pt_BR.UTF-8")
+```
+
+```{r}
+```
+
+
+
+```{r libraries, message=FALSE, include=FALSE}
+library(flexdashboard)
+library(readxl)
+library(ggplot2)
+library(stringr)
+library(plotly)
+library(DT)
+library(shiny)
+library(shinyWidgets)
+library(lubridate)
+library(tidyverse)
+library(janitor)
+library(scales)
+library(googlesheets4)
+```
+
+
+
+```{r negar %in%, include=FALSE}
+# https://www.r-bloggers.com/the-notin-operator/
+'%!in%' <- Negate('%in%')
+```
+
+
+```{r include=FALSE}
+file <- readxl::read_excel("teste_atulf.xlsx")
+
+file <- file %>% mutate(grj_clean = str_replace_all(grj, regex("[:^digit:]"),""))
+
+str_remove_all(file$grj, regex("[:digit:]"))
+
+file <- file %>% mutate(valor = str_sub(grj, -10))
+
+file <- file %>% mutate (valor_siafi = str_replace_all(valor, regex("^0*"),"") )
+
+file <- file %>% mutate (item_lf = str_c(grj_clean,"[enter]","83845701000159","00394460002357",valor_siafi,"[enter]",valor_siafi,"[enter]","s","[enter]","[pf4]"))
+
+valor <- str_c(file$item_lf,collapse ="" )
+```
+
+
+```{r echo=FALSE}
+
+  fileInput("file", "Escolha planilha (xlsx ou csv)", accept =  c(".csv", ".xlsx"))
+
+  textInput("favorecido", label = h3("cnpj do Tribunal"), value = "")
+  
+  textInput("ug", label = h3("cnpj da UG"), value = "")
+
+  data <- reactive({
+    
+      req(input$file)
+    
+    ext <- tools::file_ext(input$file$name)
+    switch(ext,
+      csv = vroom::vroom(input$file$datapath, delim = ","),
+      xlsx = readxl::read_excel(input$file$datapath),
+      validate("Invalid file; Please upload a .csv or .xlsx file")
+    )
+  })
+  
+  renderTable(head(data()))
+  
+  atulf <- reactive({
+    
+    req(data()
+      )
+    # req(input$favorecido)
+    
+    data() %>% mutate(grj_clean = str_replace_all(grj, regex("[:^digit:]"),""),
+                      valor = str_sub(grj, -10),
+                      valor_siafi = str_replace_all(valor, regex("^0*"),""),
+                      item_lf = str_c(grj_clean,"[enter]",input$favorecido,input$ug,valor_siafi,"[enter]",valor_siafi,"[enter]","s","[enter]","[pf4]"))
+  })
+renderTable(head(atulf()))
+
+
+
+downloadHandler(
+  filename = function() {
+    paste0(input$dataset, ".csv")
+  },
+  content = function(file) {
+    write.csv(str_c(atulf()$item_lf,collapse ="" ), file)
+  }
+)
+
+```
+
