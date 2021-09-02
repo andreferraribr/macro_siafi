@@ -1,6 +1,7 @@
 ---
 title: "macro_siafi"
-output: html_document
+output:
+  flexdashboard::flex_dashboard:
 runtime: shiny
 ---
 
@@ -24,7 +25,7 @@ library(stringr)
 library(plotly)
 library(DT)
 library(shiny)
-library(shinyWidgets)
+# library(shinyWidgets)
 library(lubridate)
 library(tidyverse)
 library(janitor)
@@ -57,13 +58,13 @@ valor <- str_c(file$item_lf,collapse ="" )
 ```
 
 
-```{r echo=FALSE}
+```{r eval=FALSE, include=FALSE}
 
   fileInput("file", "Escolha planilha (xlsx ou csv)", accept =  c(".csv", ".xlsx"))
 
-  textInput("favorecido", label = h3("cnpj do Tribunal"), value = "")
+  textInput("favorecido", label = h3("cnpj do Tribunal"), value = "83845701000159")
   
-  textInput("ug", label = h3("cnpj da UG"), value = "")
+  textInput("ug", label = h3("cnpj da UG"), value = "00394460002357")
 
   data <- reactive({
     
@@ -92,7 +93,75 @@ valor <- str_c(file$item_lf,collapse ="" )
   })
 renderTable(head(atulf()))
 
+renderText(str_c(atulf()$item_lf,collapse ="" ))
 
+downloadHandler(
+  filename = function() {
+    paste0(input$dataset, ".csv")
+  },
+  content = function(file) {
+    write.csv(str_c(atulf()$item_lf,collapse ="" ), file)
+  }
+)
+
+```
+
+```{r}
+ fileInput("file", "Escolha planilha (xlsx ou csv)", accept =  c(".csv", ".xlsx"))
+
+  textInput("favorecido", label = h3("cnpj do Tribunal"), value = "83845701000159")
+  
+  textInput("ug", label = h3("cnpj da UG"), value = "00394460002357")
+
+  data <- reactive({
+    
+      req(input$file)
+    
+    ext <- tools::file_ext(input$file$name)
+    switch(ext,
+      csv = vroom::vroom(input$file$datapath, delim = ","),
+      xlsx = readxl::read_excel(input$file$datapath),
+      validate("Invalid file; Please upload a .csv or .xlsx file")
+    )
+  })
+  
+  
+  # renderTable(head(data()))
+  
+  atulf <- reactive({
+    
+    req(data()
+      )
+    # req(input$favorecido)
+    
+    data() %>% mutate(grj_clean = str_replace_all(grj, regex("[:^digit:]"),""),
+                      valor = str_sub(grj, -10),
+                      valor_siafi = str_replace_all(valor, regex("^0*"),""),
+                      item_lf = str_c(grj_clean,"[enter]",input$favorecido,input$ug,valor_siafi,"[enter]",valor_siafi,"[enter]","s","[enter]","[pf4]"))
+  })
+# renderTable(head(atulf()))
+
+
+# renderText(str_c(atulf()$item_lf,collapse ="" ))
+mac1 <-c('<HAScript name="atulf_grj" description="" timeout="60000" pausetime="300" promptall="true" blockinput="false" author="mari" creationdate="14/07/2021 15:00:18" supressclearevents="false" usevars="false" ignorepauseforenhancedtn="true" delayifnotenhancedtn="0" ignorepausetimeforenhancedtn="true">
+
+    <screen name="Tela1" entryscreen="true" exitscreen="true" transient="false">
+        <description >
+            <oia status="NOTINHIBITED" optional="false" invertmatch="false" />
+        </description>
+        <actions>
+            <mouseclick row="6" col="17" />
+            <input value="') 
+
+mac2 <- c('" row="0" col="0" movecursor="true" xlatehostkeys="true" encrypted="false" />
+        </actions>
+        <nextscreens timeout="0" >
+        </nextscreens>
+    </screen>
+
+</HAScript>')
+
+renderText(paste0(mac1,str_c(atulf()$item_lf,collapse ="" ),mac2))
 
 downloadHandler(
   filename = function() {
