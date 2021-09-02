@@ -41,7 +41,7 @@ library(googlesheets4)
 ```
 
 
-```{r include=FALSE}
+```{r eval=FALSE, include=FALSE}
 file <- readxl::read_excel("teste_atulf.xlsx")
 
 file <- file %>% mutate(grj_clean = str_replace_all(grj, regex("[:^digit:]"),""))
